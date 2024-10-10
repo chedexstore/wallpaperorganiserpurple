@@ -79,20 +79,19 @@
         white-space: nowrap;
     }
 
-   /* Task List Styles */
+  /* Task List Styles */
 .task-list-container {
     position: absolute;
-    top: 10%; /* Adjust this value to move further above the center */
-    right: 5%;
+    top: 10%; /* Place the task list at the top of the page */
+    left: 20%;
     width: 350px;
-    height: auto; /* Auto height to accommodate longer text */
+    height: auto;
     padding: 10px;
     color: #000000;
     font-size: 1.2em;
-    box-sizing: border-box;
     background-color: transparent;
-    overflow: visible; /* Remove scrolling */
 }
+
 
 /* Updated Task Input Styles */
 .task-input {
@@ -242,10 +241,11 @@
 </head>
 <body>
     <div class="container">
-        <div id="taskListContainer" class="draggable task-list-container">
-            <textarea id="taskInput" class="task-input" placeholder="Enter task and hit Enter" rows="1"></textarea>
-            <ul id="taskList" class="task-list"></ul>
-        </div>
+        <div id="taskListContainer" class="draggable task-list-container" style="top: 10%; left: 20%;">
+    <textarea id="taskInput" class="task-input" placeholder="Enter task and hit Enter" rows="1"></textarea>
+    <ul id="taskList" class="task-list"></ul>
+</div>
+
 
         <div id="timeContainer" class="draggable time-container">
             <div id="timeDateGroup" class="time-date-group">
@@ -273,170 +273,143 @@
     </div>
 
    <script>
-    $(function () {
-        let currentDate = new Date();
+        $(function () {
+            // Make elements draggable
+            $(".draggable").draggable({
+                stop: function(event, ui) {
+                    let elementId = $(this).attr("id");
+                    let position = ui.position;
+                    localStorage.setItem(elementId, JSON.stringify(position));
+                }
+            });
 
-      function updateClock() {
-    let now = new Date();
-    let hours = now.getHours();
-    let minutes = now.getMinutes();
-    let ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    minutes = minutes < 10 ? '0' + minutes : minutes;
-    let timeString = hours + ':' + minutes + ' ' + ampm;
-    $('#clock').text(timeString);
+            // Retrieve and set saved positions on load
+            $(".draggable").each(function() {
+                let elementId = $(this).attr("id");
+                let savedPosition = localStorage.getItem(elementId);
 
-    // Format the date as "Fri, Oct 04, 2024"
-    let options = { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' };
-    let dateString = now.toLocaleDateString('en-US', options);
-    $('#date').text(dateString);
-}
+                if (savedPosition) {
+                    let position = JSON.parse(savedPosition);
+                    $(this).css({ top: position.top, left: position.left });
+                }
+            });
 
+            let currentDate = new Date();
 
-        setInterval(updateClock, 1000);
-        updateClock();
+            function updateClock() {
+                let now = new Date();
+                let hours = now.getHours();
+                let minutes = now.getMinutes();
+                let ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+                let timeString = hours + ':' + minutes + ' ' + ampm;
+                $('#clock').text(timeString);
 
-        function generateCalendar(date) {
-            const month = date.getMonth();
-            const year = date.getFullYear();
-            $('#monthYear').text(date.toLocaleString('default', { month: 'long' }) + ' ' + year);
-            $('.calendar-picker').find('div:not(.weekday)').remove();
-            let firstDay = new Date(year, month, 1).getDay();
-            let daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            for (let i = 0; i < firstDay; i++) {
-                $('.calendar-picker').append('<div class="day"></div>');
+                // Format the date
+                let options = { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' };
+                let dateString = now.toLocaleDateString('en-US', options);
+                $('#date').text(dateString);
             }
 
-            for (let day = 1; day <= daysInMonth; day++) {
-                $('.calendar-picker').append('<div class="day">' + day + '</div>');
+            setInterval(updateClock, 1000);
+            updateClock();
+
+            function generateCalendar(date) {
+                const month = date.getMonth();
+                const year = date.getFullYear();
+                $('#monthYear').text(date.toLocaleString('default', { month: 'long' }) + ' ' + year);
+                $('.calendar-picker').find('div:not(.weekday)').remove();
+                let firstDay = new Date(year, month, 1).getDay();
+                let daysInMonth = new Date(year, month + 1, 0).getDate();
+
+                for (let i = 0; i < firstDay; i++) {
+                    $('.calendar-picker').append('<div class="day"></div>');
+                }
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    $('.calendar-picker').append('<div class="day">' + day + '</div>');
+                }
             }
-        }
 
-        generateCalendar(currentDate);
-
-        $('#prevMonth').on('click', function () {
-            currentDate.setMonth(currentDate.getMonth() - 1);
             generateCalendar(currentDate);
-        });
 
-        $('#nextMonth').on('click', function () {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            generateCalendar(currentDate);
-        });
+            $('#prevMonth').on('click', function () {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                generateCalendar(currentDate);
+            });
 
-        // Make time container draggable
-        $('#timeContainer').draggable({
-            stop: function (event, ui) {
-                savePositions();
+            $('#nextMonth').on('click', function () {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                generateCalendar(currentDate);
+            });
+
+            // Task Input
+            $('#taskInput').on('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    let taskText = $(this).val().trim();
+                    if (taskText) {
+                        $('#taskList').append(`
+                            <li>
+                                <input type="checkbox" class="task-checkbox">
+                                <span class="task-content">${taskText}</span>
+                                <button class="delete-task">X</button>
+                            </li>
+                        `);
+                        $(this).val(''); // Clear the input
+                        saveTasks(); // Save tasks to local storage
+                    }
+                }
+            });
+
+            // Delete Task
+            $('#taskList').on('click', '.delete-task', function () {
+                $(this).parent().remove();
+                saveTasks(); // Save tasks to local storage
+            });
+
+            // Save tasks to local storage
+            function saveTasks() {
+                const tasks = [];
+                $('#taskList li').each(function () {
+                    const taskText = $(this).find('.task-content').text();
+                    const isChecked = $(this).find('.task-checkbox').is(':checked');
+                    tasks.push({ text: taskText, completed: isChecked });
+                });
+                localStorage.setItem('tasks', JSON.stringify(tasks));
             }
-        });
 
-        // Make calendar container draggable
-        $('#calendarContainer').draggable({
-            stop: function (event, ui) {
-                savePositions();
-            }
-        });
-
-        // Make task list container draggable
-        $('#taskListContainer').draggable({
-            stop: function (event, ui) {
-                savePositions();
-            }
-        });
-
-        // Task Input
-        $('#taskInput').on('keydown', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                let taskText = $(this).val().trim();
-                if (taskText) {
+            // Load tasks from local storage
+            function loadTasks() {
+                const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+                tasks.forEach(task => {
                     $('#taskList').append(`
                         <li>
-                            <input type="checkbox" class="task-checkbox">
-                            <span class="task-content">${taskText}</span>
+                            <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
+                            <span class="task-content ${task.completed ? 'checked' : ''}">${task.text}</span>
                             <button class="delete-task">X</button>
                         </li>
                     `);
-                    $(this).val(''); // Clear the input
-                    saveTasks(); // Save tasks to local storage
-                }
+                });
+
+                // Attach event for checking tasks
+                attachTaskEvents();
             }
+
+            // Attach event listeners for task checkbox changes
+            function attachTaskEvents() {
+                $('#taskList').on('change', '.task-checkbox', function () {
+                    const taskContent = $(this).closest('li').find('.task-content');
+                    taskContent.toggleClass('checked', this.checked);
+                    saveTasks(); // Save tasks after changing status
+                });
+            }
+
+            // Initial load
+            loadTasks();
         });
-
-        // Delete Task
-        $('#taskList').on('click', '.delete-task', function () {
-            $(this).parent().remove();
-            saveTasks(); // Save tasks to local storage
-        });
-
-        // Save tasks to local storage
-        function saveTasks() {
-            const tasks = [];
-            $('#taskList li').each(function () {
-                const taskText = $(this).find('.task-content').text();
-                const isChecked = $(this).find('.task-checkbox').is(':checked');
-                tasks.push({ text: taskText, completed: isChecked });
-            });
-            localStorage.setItem('tasks', JSON.stringify(tasks));
-        }
-
-        // Load tasks from local storage
-        function loadTasks() {
-            const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-            tasks.forEach(task => {
-                $('#taskList').append(`
-                    <li>
-                        <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
-                        <span class="task-content ${task.completed ? 'checked' : ''}">${task.text}</span>
-                        <button class="delete-task">X</button>
-                    </li>
-                `);
-            });
-
-            // Attach event for checking tasks
-            attachTaskEvents();
-        }
-
-        // Attach event listeners for task checkbox changes
-        function attachTaskEvents() {
-            $('#taskList').on('change', '.task-checkbox', function () {
-                const taskContent = $(this).closest('li').find('.task-content');
-                taskContent.toggleClass('checked', this.checked);
-                saveTasks(); // Save tasks after changing status
-            });
-        }
-
-        // Save positions of draggable elements
-        function savePositions() {
-            const positions = {
-                timeContainer: $('#timeContainer').position(),
-                calendarContainer: $('#calendarContainer').position(),
-                taskListContainer: $('#taskListContainer').position()
-            };
-            localStorage.setItem('positions', JSON.stringify(positions));
-        }
-
-        // Load positions of draggable elements
-        function loadPositions() {
-            const positions = JSON.parse(localStorage.getItem('positions')) || {};
-            if (positions.timeContainer) {
-                $('#timeContainer').css(positions.timeContainer);
-            }
-            if (positions.calendarContainer) {
-                $('#calendarContainer').css(positions.calendarContainer);
-            }
-            if (positions.taskListContainer) {
-                $('#taskListContainer').css(positions.taskListContainer);
-            }
-        }
-
-        // Initial load
-        loadTasks();
-        loadPositions();
-    });
-</script>
+    </script>
 </body>
 </html>
